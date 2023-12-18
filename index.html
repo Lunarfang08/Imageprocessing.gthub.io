@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Image Editor</title>
+    <style>
+      body {
+        text-align: center;
+        margin: 0;
+        padding: 20px;
+        font-family: "Arial", sans-serif;
+        background-image: url("https://4kwallpapers.com/images/walls/thumbs_3t/8324.png"); /* Add your image path here */
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+      }
+
+      h1 {
+        color: white;
+        font-family: "Arial", sans-serif;
+        font-style: italic;
+        font-size: 2em;
+        text-align: center;
+        padding: 10px;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+        margin: 20px;
+      }
+
+      #imageCanvas {
+        max-width: 100%;
+        height: auto;
+        border: 1px solid #ddd;
+        margin-top: 20px;
+      }
+
+      .control-group {
+        margin-top: 20px;
+      }
+
+      .control-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+
+      .control-group input[type="range"] {
+        width: 100%;
+      }
+
+      button {
+        background-color: #007bff;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-top: 10px;
+      }
+
+      button:hover {
+        background-color: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Image Editor</h1>
+    <div class="control-group">
+      <input
+        type="file"
+        id="imageLoader"
+        name="imageLoader"
+        class="file-loader"
+      />
+    </div>
+
+    <div class="canvas-container">
+      <canvas id="imageCanvas"></canvas>
+    </div>
+
+    <div class="control-group">
+      <label for="brightness" style="color: white">Brightness:</label>
+      <input
+        type="range"
+        id="brightness"
+        min="-100"
+        max="100"
+        value="0"
+        class="slider"
+      />
+    </div>
+
+    <div class="control-group">
+      <label for="contrast" style="color: white">Contrast:</label>
+      <input
+        type="range"
+        id="contrast"
+        min="-100"
+        max="100"
+        value="0"
+        class="slider"
+      />
+    </div>
+
+    <div class="control-group">
+      <label for="opacity" style="color: white">Opacity:</label>
+      <input
+        type="range"
+        id="opacity"
+        min="0"
+        max="100"
+        value="100"
+        class="slider"
+      />
+    </div>
+
+    <div class="button-group">
+      <button id="grayscaleFilter" class="btn">Apply Grayscale Filter</button>
+      <button id="blackWhiteFilter" class="btn">
+        Apply Black & White Filter
+      </button>
+      <button id="negativeFilter">Apply Negative Filter</button><br />
+      <button id="thresholdFilter">Apply Threshold Filter</button><br />
+    </div>
+
+    <script>
+      window.onload = function () {
+        var canvas = document.getElementById("imageCanvas");
+        var ctx = canvas.getContext("2d");
+        var imageLoader = document.getElementById("imageLoader");
+        var originalImage = null; // Variable to store the original image
+
+        imageLoader.addEventListener("change", handleImage, false);
+
+        function handleImage(e) {
+          var reader = new FileReader();
+          reader.onload = function (event) {
+            var img = new Image();
+            img.onload = function () {
+              canvas.width = img.width;
+              canvas.height = img.height;
+              ctx.drawImage(img, 0, 0);
+              originalImage = img; // Store the original image
+            };
+            img.src = event.target.result;
+          };
+          reader.readAsDataURL(e.target.files[0]);
+        }
+
+        var brightnessControl = document.getElementById("brightness");
+        var contrastControl = document.getElementById("contrast");
+        var opacityControl = document.getElementById("opacity");
+        var negativeButton = document.getElementById("negativeFilter");
+        var thresholdButton = document.getElementById("thresholdFilter");
+
+        // event listener
+        brightnessControl.addEventListener("input", applyFilters);
+        contrastControl.addEventListener("input", applyFilters);
+        opacityControl.addEventListener("input", applyFilters);
+        thresholdButton.addEventListener("click", applyThreshold);
+        negativeButton.addEventListener("click", applyNegative);
+        function applyFilters() {
+          if (originalImage) {
+            var brightnessValue = brightnessControl.value;
+            var contrastValue = contrastControl.value;
+            var opacityValue = opacityControl.value;
+
+            //  clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Set global alpha for opacity
+            ctx.globalAlpha = opacityValue / 100;
+
+            // Apply the filters and redraw the image
+            ctx.filter = `brightness(${
+              100 + parseInt(brightnessValue)
+            }%) contrast(${100 + parseInt(contrastValue)}%)`;
+            ctx.drawImage(originalImage, 0, 0);
+          }
+        }
+
+        var grayscaleButton = document.getElementById("grayscaleFilter");
+        grayscaleButton.addEventListener("click", function () {
+          applyGrayscale();
+        });
+
+        function applyGrayscale() {
+          if (originalImage) {
+            ctx.drawImage(originalImage, 0, 0);
+            var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            var data = imageData.data;
+
+            for (var i = 0; i < data.length; i += 4) {
+              var avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+              data[i] = avg; // red
+              data[i + 1] = avg; // green
+              data[i + 2] = avg; // blue
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+          }
+        }
+
+        var blackWhiteButton = document.getElementById("blackWhiteFilter");
+        blackWhiteButton.addEventListener("click", function () {
+          applyBlackAndWhite();
+        });
+
+        function applyBlackAndWhite() {
+          if (originalImage) {
+            ctx.drawImage(originalImage, 0, 0);
+            var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            var data = imageData.data;
+
+            for (var i = 0; i < data.length; i += 4) {
+              var avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+              avg = avg > 128 ? 255 : 0; // Threshold for black and white
+              data[i] = avg; // red
+              data[i + 1] = avg; // green
+              data[i + 2] = avg; // blue
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+          }
+        }
+        function applyNegative() {
+          if (originalImage) {
+            ctx.drawImage(originalImage, 0, 0);
+            var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            var data = imageData.data;
+
+            for (var i = 0; i < data.length; i += 4) {
+              data[i] = 255 - data[i]; // red
+              data[i + 1] = 255 - data[i + 1]; // green
+              data[i + 2] = 255 - data[i + 2]; // blue
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+          }
+        }
+        function applyThreshold() {
+          if (originalImage) {
+            ctx.drawImage(originalImage, 0, 0);
+            var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            var data = imageData.data;
+            var threshold = 128; // You can adjust this value
+
+            for (var i = 0; i < data.length; i += 4) {
+              var brightness =
+                0.34 * data[i] + 0.5 * data[i + 1] + 0.16 * data[i + 2];
+              var binaryColor = brightness < threshold ? 0 : 255;
+              data[i] = binaryColor; // red
+              data[i + 1] = binaryColor; // green
+              data[i + 2] = binaryColor; // blue
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+          }
+        }
+      };
+    </script>
+  </body>
+</html>
